@@ -1,3 +1,4 @@
+#!/usr/bin/env Rscript
 library(sp)
 library(raster)
 library(rgdal)
