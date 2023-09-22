@@ -1,2 +1,1 @@
-*.R linguist-language=R
-*.R linguist-detectable
+*.html linguist-vendored=false
