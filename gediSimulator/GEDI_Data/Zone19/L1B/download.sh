@@ -1,0 +1,190 @@
+#!/bin/bash
+
+GREP_OPTIONS=''
+
+cookiejar=$(mktemp cookies.XXXXXXXXXX)
+netrc=$(mktemp netrc.XXXXXXXXXX)
+chmod 0600 "$cookiejar" "$netrc"
+function finish {
+  rm -rf "$cookiejar" "$netrc"
+}
+
+trap finish EXIT
+WGETRC="$wgetrc"
+
+prompt_credentials() {
+    echo "Enter your Earthdata Login or other provider supplied credentials"
+    read -p "Username (aly3213): " username
+    username=${username:-aly3213}
+    read -s -p "Password: " password
+    echo "machine urs.earthdata.nasa.gov login $username password $password" >> $netrc
+    echo
+}
+
+exit_with_error() {
+    echo
+    echo "Unable to Retrieve Data"
+    echo
+    echo $1
+    echo
+    echo "https://e4ftl01.cr.usgs.gov//GEDI_L1_L2/GEDI/GEDI01_B.002/2023.02.14/GEDI01_B_2023045202413_O23650_04_T03372_02_005_02_V002.h5"
+    echo
+    exit 1
+}
+
+prompt_credentials
+  detect_app_approval() {
+    approved=`curl -s -b "$cookiejar" -c "$cookiejar" -L --max-redirs 5 --netrc-file "$netrc" https://e4ftl01.cr.usgs.gov//GEDI_L1_L2/GEDI/GEDI01_B.002/2023.02.14/GEDI01_B_2023045202413_O23650_04_T03372_02_005_02_V002.h5 -w '\n%{http_code}' | tail  -1`
+    if [ "$approved" -ne "200" ] && [ "$approved" -ne "301" ] && [ "$approved" -ne "302" ]; then
+        # User didn't approve the app. Direct users to approve the app in URS
+        exit_with_error "Please ensure that you have authorized the remote application by visiting the link below "
+    fi
+}
+
+setup_auth_curl() {
+    # Firstly, check if it require URS authentication
+    status=$(curl -s -z "$(date)" -w '\n%{http_code}' https://e4ftl01.cr.usgs.gov//GEDI_L1_L2/GEDI/GEDI01_B.002/2023.02.14/GEDI01_B_2023045202413_O23650_04_T03372_02_005_02_V002.h5 | tail -1)
+    if [[ "$status" -ne "200" && "$status" -ne "304" ]]; then
+        # URS authentication is required. Now further check if the application/remote service is approved.
+        detect_app_approval
+    fi
+}
+
+setup_auth_wget() {
+    # The safest way to auth via curl is netrc. Note: there's no checking or feedback
+    # if login is unsuccessful
+    touch ~/.netrc
+    chmod 0600 ~/.netrc
+    credentials=$(grep 'machine urs.earthdata.nasa.gov' ~/.netrc)
+    if [ -z "$credentials" ]; then
+        cat "$netrc" >> ~/.netrc
+    fi
+}
+
+fetch_urls() {
+  if command -v curl >/dev/null 2>&1; then
+      setup_auth_curl
+      while read -r line; do
+        # Get everything after the last '/'
+        filename="${line##*/}"
+
+        # Strip everything after '?'
+        stripped_query_params="${filename%%\?*}"
+
+        curl -f -b "$cookiejar" -c "$cookiejar" -L --netrc-file "$netrc" -g -o $stripped_query_params -- $line && echo || exit_with_error "Command failed with error. Please retrieve the data manually."
+      done;
+  elif command -v wget >/dev/null 2>&1; then
+      # We can't use wget to poke provider server to get info whether or not URS was integrated without download at least one of the files.
+      echo
+      echo "WARNING: Can't find curl, use wget instead."
+      echo "WARNING: Script may not correctly identify Earthdata Login integrations."
+      echo
+      setup_auth_wget
+      while read -r line; do
+        # Get everything after the last '/'
+        filename="${line##*/}"
+
+        # Strip everything after '?'
+        stripped_query_params="${filename%%\?*}"
+
+        wget --load-cookies "$cookiejar" --save-cookies "$cookiejar" --output-document $stripped_query_params --keep-session-cookies -- $line && echo || exit_with_error "Command failed with error. Please retrieve the data manually."
+      done;
+  else
+      exit_with_error "Error: Could not find a command-line downloader.  Please install curl or wget"
+  fi
+}
+
+fetch_urls <<'EDSCEOF'
+https://e4ftl01.cr.usgs.gov//GEDI_L1_L2/GEDI/GEDI01_B.002/2020.12.31/GEDI01_B_2020366031529_O11623_01_T06348_02_005_02_V002.h5
+https://e4ftl01.cr.usgs.gov//GEDI_L1_L2/GEDI/GEDI01_B.002/2020.12.28/GEDI01_B_2020363162543_O11585_04_T09416_02_005_02_V002.h5
+https://e4ftl01.cr.usgs.gov//GEDI_L1_L2/GEDI/GEDI01_B.002/2020.12.27/GEDI01_B_2020362044918_O11562_01_T07771_02_005_02_V002.h5
+https://e4ftl01.cr.usgs.gov//GEDI_L1_L2/GEDI/GEDI01_B.002/2020.12.24/GEDI01_B_2020359175934_O11524_04_T06570_02_005_02_V002.h5
+https://e4ftl01.cr.usgs.gov//GEDI_L1_L2/GEDI/GEDI01_B.002/2020.12.23/GEDI01_B_2020358062307_O11501_01_T10617_02_005_02_V002.h5
+https://e4ftl01.cr.usgs.gov//GEDI_L1_L2/GEDI/GEDI01_B.002/2020.12.20/GEDI01_B_2020355193320_O11463_04_T07993_02_005_02_V002.h5
+https://e4ftl01.cr.usgs.gov//GEDI_L1_L2/GEDI/GEDI01_B.002/2020.12.19/GEDI01_B_2020354075652_O11440_01_T09041_02_005_02_V002.h5
+https://e4ftl01.cr.usgs.gov//GEDI_L1_L2/GEDI/GEDI01_B.002/2020.12.16/GEDI01_B_2020351210703_O11402_04_T10839_02_005_02_V002.h5
+https://e4ftl01.cr.usgs.gov//GEDI_L1_L2/GEDI/GEDI01_B.002/2020.12.15/GEDI01_B_2020350093035_O11379_01_T06195_02_005_02_V002.h5
+https://e4ftl01.cr.usgs.gov//GEDI_L1_L2/GEDI/GEDI01_B.002/2020.12.12/GEDI01_B_2020347224042_O11341_04_T09263_02_005_02_V002.h5
+https://e4ftl01.cr.usgs.gov//GEDI_L1_L2/GEDI/GEDI01_B.002/2020.12.11/GEDI01_B_2020346110412_O11318_01_T07465_02_005_02_V002.h5
+https://e4ftl01.cr.usgs.gov//GEDI_L1_L2/GEDI/GEDI01_B.002/2020.12.03/GEDI01_B_2020338141122_O11196_01_T10464_02_005_02_V002.h5
+https://e4ftl01.cr.usgs.gov//GEDI_L1_L2/GEDI/GEDI01_B.002/2020.11.29/GEDI01_B_2020334154451_O11135_01_T05889_02_005_02_V002.h5
+https://e4ftl01.cr.usgs.gov//GEDI_L1_L2/GEDI/GEDI01_B.002/2020.11.25/GEDI01_B_2020330171806_O11074_01_T08735_02_005_02_V002.h5
+https://e4ftl01.cr.usgs.gov//GEDI_L1_L2/GEDI/GEDI01_B.002/2020.11.21/GEDI01_B_2020326185117_O11013_01_T07465_02_005_02_V002.h5
+https://e4ftl01.cr.usgs.gov//GEDI_L1_L2/GEDI/GEDI01_B.002/2020.11.19/GEDI01_B_2020324080102_O10975_04_T07840_02_005_02_V002.h5
+https://e4ftl01.cr.usgs.gov//GEDI_L1_L2/GEDI/GEDI01_B.002/2020.11.17/GEDI01_B_2020322202422_O10952_01_T06042_02_005_02_V002.h5
+https://e4ftl01.cr.usgs.gov//GEDI_L1_L2/GEDI/GEDI01_B.002/2020.11.15/GEDI01_B_2020320093412_O10914_04_T06417_02_005_02_V002.h5
+https://e4ftl01.cr.usgs.gov//GEDI_L1_L2/GEDI/GEDI01_B.002/2020.11.13/GEDI01_B_2020318215729_O10891_01_T08888_02_005_02_V002.h5
+https://e4ftl01.cr.usgs.gov//GEDI_L1_L2/GEDI/GEDI01_B.002/2020.11.09/GEDI01_B_2020314233134_O10830_01_T10311_02_005_02_V002.h5
+https://e4ftl01.cr.usgs.gov//GEDI_L1_L2/GEDI/GEDI01_B.002/2020.11.06/GEDI01_B_2020311010600_O10769_01_T07312_02_005_02_V002.h5
+https://e4ftl01.cr.usgs.gov//GEDI_L1_L2/GEDI/GEDI01_B.002/2020.11.02/GEDI01_B_2020307024023_O10708_01_T10158_02_005_02_V002.h5
+https://e4ftl01.cr.usgs.gov//GEDI_L1_L2/GEDI/GEDI01_B.002/2020.06.19/GEDI01_B_2020171201232_O08611_04_T01949_02_005_01_V002.h5
+https://e4ftl01.cr.usgs.gov//GEDI_L1_L2/GEDI/GEDI01_B.002/2020.06.18/GEDI01_B_2020170083624_O08588_01_T04267_02_005_01_V002.h5
+https://e4ftl01.cr.usgs.gov//GEDI_L1_L2/GEDI/GEDI01_B.002/2020.06.15/GEDI01_B_2020167214709_O08550_04_T03066_02_005_01_V002.h5
+https://e4ftl01.cr.usgs.gov//GEDI_L1_L2/GEDI/GEDI01_B.002/2020.06.14/GEDI01_B_2020166101101_O08527_01_T02844_02_005_01_V002.h5
+https://e4ftl01.cr.usgs.gov//GEDI_L1_L2/GEDI/GEDI01_B.002/2020.06.11/GEDI01_B_2020163232145_O08489_04_T02913_02_005_01_V002.h5
+https://e4ftl01.cr.usgs.gov//GEDI_L1_L2/GEDI/GEDI01_B.002/2020.06.10/GEDI01_B_2020162114536_O08466_01_T02691_02_005_01_V002.h5
+https://e4ftl01.cr.usgs.gov//GEDI_L1_L2/GEDI/GEDI01_B.002/2020.06.08/GEDI01_B_2020160005619_O08428_04_T01337_02_005_01_V002.h5
+https://e4ftl01.cr.usgs.gov//GEDI_L1_L2/GEDI/GEDI01_B.002/2020.06.06/GEDI01_B_2020158132010_O08405_01_T05231_02_005_01_V002.h5
+https://e4ftl01.cr.usgs.gov//GEDI_L1_L2/GEDI/GEDI01_B.002/2020.06.04/GEDI01_B_2020156023052_O08367_04_T04030_02_005_01_V002.h5
+https://e4ftl01.cr.usgs.gov//GEDI_L1_L2/GEDI/GEDI01_B.002/2020.06.02/GEDI01_B_2020154145442_O08344_01_T02385_02_005_01_V002.h5
+https://e4ftl01.cr.usgs.gov//GEDI_L1_L2/GEDI/GEDI01_B.002/2020.05.29/GEDI01_B_2020150162909_O08283_01_T05078_02_005_01_V002.h5
+https://e4ftl01.cr.usgs.gov//GEDI_L1_L2/GEDI/GEDI01_B.002/2020.05.27/GEDI01_B_2020148053948_O08245_04_T05147_02_005_01_V002.h5
+https://e4ftl01.cr.usgs.gov//GEDI_L1_L2/GEDI/GEDI01_B.002/2020.05.23/GEDI01_B_2020144071412_O08184_04_T03571_02_005_01_V002.h5
+https://e4ftl01.cr.usgs.gov//GEDI_L1_L2/GEDI/GEDI01_B.002/2020.05.21/GEDI01_B_2020142193759_O08161_01_T01926_02_005_01_V002.h5
+https://e4ftl01.cr.usgs.gov//GEDI_L1_L2/GEDI/GEDI01_B.002/2020.05.17/GEDI01_B_2020138211220_O08100_01_T04619_02_005_01_V002.h5
+https://e4ftl01.cr.usgs.gov//GEDI_L1_L2/GEDI/GEDI01_B.002/2020.04.02/GEDI01_B_2020093032905_O07391_04_T00725_02_005_01_V002.h5
+https://e4ftl01.cr.usgs.gov//GEDI_L1_L2/GEDI/GEDI01_B.002/2020.03.27/GEDI01_B_2020087172459_O07307_01_T00350_02_005_01_V002.h5
+https://e4ftl01.cr.usgs.gov//GEDI_L1_L2/GEDI/GEDI01_B.002/2020.03.25/GEDI01_B_2020085063432_O07269_04_T02301_02_005_01_V002.h5
+https://e4ftl01.cr.usgs.gov//GEDI_L1_L2/GEDI/GEDI01_B.002/2020.03.23/GEDI01_B_2020083185741_O07246_01_T00503_02_005_01_V002.h5
+https://e4ftl01.cr.usgs.gov//GEDI_L1_L2/GEDI/GEDI01_B.002/2020.03.21/GEDI01_B_2020081080712_O07208_04_T03724_02_005_01_V002.h5
+https://e4ftl01.cr.usgs.gov//GEDI_L1_L2/GEDI/GEDI01_B.002/2020.03.19/GEDI01_B_2020079203019_O07185_01_T02079_02_005_01_V002.h5
+https://e4ftl01.cr.usgs.gov//GEDI_L1_L2/GEDI/GEDI01_B.002/2020.03.17/GEDI01_B_2020077094034_O07147_04_T00878_02_005_01_V002.h5
+https://e4ftl01.cr.usgs.gov//GEDI_L1_L2/GEDI/GEDI01_B.002/2020.03.15/GEDI01_B_2020075220410_O07124_01_T03502_02_005_01_V002.h5
+https://e4ftl01.cr.usgs.gov//GEDI_L1_L2/GEDI/GEDI01_B.002/2020.03.13/GEDI01_B_2020073111427_O07086_04_T05147_02_005_01_V002.h5
+https://e4ftl01.cr.usgs.gov//GEDI_L1_L2/GEDI/GEDI01_B.002/2020.03.11/GEDI01_B_2020071233803_O07063_01_T04772_02_005_01_V002.h5
+https://e4ftl01.cr.usgs.gov//GEDI_L1_L2/GEDI/GEDI01_B.002/2020.03.08/GEDI01_B_2020068011153_O07002_01_T03196_02_005_01_V002.h5
+https://e4ftl01.cr.usgs.gov//GEDI_L1_L2/GEDI/GEDI01_B.002/2020.03.05/GEDI01_B_2020065142207_O06964_04_T04994_02_005_01_V002.h5
+https://e4ftl01.cr.usgs.gov//GEDI_L1_L2/GEDI/GEDI01_B.002/2020.03.04/GEDI01_B_2020064024540_O06941_01_T04772_02_005_01_V002.h5
+https://e4ftl01.cr.usgs.gov//GEDI_L1_L2/GEDI/GEDI01_B.002/2020.02.29/GEDI01_B_2020060041926_O06880_01_T01773_02_005_01_V002.h5
+https://e4ftl01.cr.usgs.gov//GEDI_L1_L2/GEDI/GEDI01_B.002/2020.02.25/GEDI01_B_2020056055308_O06819_01_T03196_02_005_01_V002.h5
+https://e4ftl01.cr.usgs.gov//GEDI_L1_L2/GEDI/GEDI01_B.002/2020.02.21/GEDI01_B_2020052072649_O06758_01_T00197_02_005_01_V002.h5
+https://e4ftl01.cr.usgs.gov//GEDI_L1_L2/GEDI/GEDI01_B.002/2020.02.17/GEDI01_B_2020048090026_O06697_01_T01773_02_005_01_V002.h5
+https://e4ftl01.cr.usgs.gov//GEDI_L1_L2/GEDI/GEDI01_B.002/2020.02.09/GEDI01_B_2020040120734_O06575_01_T04466_02_005_01_V002.h5
+https://e4ftl01.cr.usgs.gov//GEDI_L1_L2/GEDI/GEDI01_B.002/2019.12.18/GEDI01_B_2019352210420_O05759_04_T01184_02_005_01_V002.h5
+https://e4ftl01.cr.usgs.gov//GEDI_L1_L2/GEDI/GEDI01_B.002/2019.12.17/GEDI01_B_2019351092907_O05736_01_T00503_02_005_01_V002.h5
+https://e4ftl01.cr.usgs.gov//GEDI_L1_L2/GEDI/GEDI01_B.002/2019.11.26/GEDI01_B_2019330055850_O05408_04_T01643_02_005_01_V002.h5
+https://e4ftl01.cr.usgs.gov//GEDI_L1_L2/GEDI/GEDI01_B.002/2019.11.24/GEDI01_B_2019328182331_O05385_01_T01115_02_005_01_V002.h5
+https://e4ftl01.cr.usgs.gov//GEDI_L1_L2/GEDI/GEDI01_B.002/2019.11.22/GEDI01_B_2019326073535_O05347_04_T03877_02_005_01_V002.h5
+https://e4ftl01.cr.usgs.gov//GEDI_L1_L2/GEDI/GEDI01_B.002/2019.11.20/GEDI01_B_2019324200015_O05324_01_T03349_02_005_01_V002.h5
+https://e4ftl01.cr.usgs.gov//GEDI_L1_L2/GEDI/GEDI01_B.002/2019.10.29/GEDI01_B_2019302045500_O04973_01_T05384_02_005_01_V002.h5
+https://e4ftl01.cr.usgs.gov//GEDI_L1_L2/GEDI/GEDI01_B.002/2019.10.26/GEDI01_B_2019299180730_O04935_04_T01031_02_005_01_V002.h5
+https://e4ftl01.cr.usgs.gov//GEDI_L1_L2/GEDI/GEDI01_B.002/2019.10.25/GEDI01_B_2019298063226_O04912_01_T01926_02_005_01_V002.h5
+https://e4ftl01.cr.usgs.gov//GEDI_L1_L2/GEDI/GEDI01_B.002/2019.10.08/GEDI01_B_2019281012658_O04645_04_T04642_02_005_01_V002.h5
+https://e4ftl01.cr.usgs.gov//GEDI_L1_L2/GEDI/GEDI01_B.002/2019.10.06/GEDI01_B_2019279135148_O04622_01_T03961_02_005_01_V002.h5
+https://e4ftl01.cr.usgs.gov//GEDI_L1_L2/GEDI/GEDI01_B.002/2019.10.04/GEDI01_B_2019277030408_O04584_04_T05453_02_005_01_V002.h5
+https://e4ftl01.cr.usgs.gov//GEDI_L1_L2/GEDI/GEDI01_B.002/2019.10.02/GEDI01_B_2019275152858_O04561_01_T00656_02_005_01_V002.h5
+https://e4ftl01.cr.usgs.gov//GEDI_L1_L2/GEDI/GEDI01_B.002/2019.09.11/GEDI01_B_2019254115957_O04233_04_T00067_02_005_01_V002.h5
+https://e4ftl01.cr.usgs.gov//GEDI_L1_L2/GEDI/GEDI01_B.002/2019.09.10/GEDI01_B_2019253002511_O04210_01_T00809_02_005_01_V002.h5
+https://e4ftl01.cr.usgs.gov//GEDI_L1_L2/GEDI/GEDI01_B.002/2019.09.07/GEDI01_B_2019250133812_O04172_04_T03571_02_005_01_V002.h5
+https://e4ftl01.cr.usgs.gov//GEDI_L1_L2/GEDI/GEDI01_B.002/2019.08.18/GEDI01_B_2019230092613_O03859_01_T00350_02_005_01_V002.h5
+https://e4ftl01.cr.usgs.gov//GEDI_L1_L2/GEDI/GEDI01_B.002/2019.08.09/GEDI01_B_2019221011120_O03714_04_T02102_02_005_01_V002.h5
+https://e4ftl01.cr.usgs.gov//GEDI_L1_L2/GEDI/GEDI01_B.002/2019.08.07/GEDI01_B_2019219133724_O03691_01_T01268_02_005_02_V002.h5
+https://e4ftl01.cr.usgs.gov//GEDI_L1_L2/GEDI/GEDI01_B.002/2019.08.05/GEDI01_B_2019217025145_O03653_04_T05300_02_005_02_V002.h5
+https://e4ftl01.cr.usgs.gov//GEDI_L1_L2/GEDI/GEDI01_B.002/2019.08.03/GEDI01_B_2019215151748_O03630_01_T03043_02_005_02_V002.h5
+https://e4ftl01.cr.usgs.gov//GEDI_L1_L2/GEDI/GEDI01_B.002/2019.07.25/GEDI01_B_2019206070432_O03485_04_T01796_02_005_01_V002.h5
+https://e4ftl01.cr.usgs.gov//GEDI_L1_L2/GEDI/GEDI01_B.002/2019.07.23/GEDI01_B_2019204193034_O03462_01_T00962_02_005_02_V002.h5
+https://e4ftl01.cr.usgs.gov//GEDI_L1_L2/GEDI/GEDI01_B.002/2019.07.10/GEDI01_B_2019191125716_O03256_04_T04336_02_005_01_V002.h5
+https://e4ftl01.cr.usgs.gov//GEDI_L1_L2/GEDI/GEDI01_B.002/2019.07.09/GEDI01_B_2019190012314_O03233_01_T02232_02_005_01_V002.h5
+https://e4ftl01.cr.usgs.gov//GEDI_L1_L2/GEDI/GEDI01_B.002/2019.06.28/GEDI01_B_2019179053647_O03065_01_T04114_02_005_01_V002.h5
+https://e4ftl01.cr.usgs.gov//GEDI_L1_L2/GEDI/GEDI01_B.002/2019.06.25/GEDI01_B_2019176185135_O03027_04_T02454_02_005_01_V002.h5
+https://e4ftl01.cr.usgs.gov//GEDI_L1_L2/GEDI/GEDI01_B.002/2019.06.24/GEDI01_B_2019175071755_O03004_01_T04466_02_005_01_V002.h5
+https://e4ftl01.cr.usgs.gov//GEDI_L1_L2/GEDI/GEDI01_B.002/2019.06.14/GEDI01_B_2019165230622_O02859_04_T04183_02_005_01_V002.h5
+https://e4ftl01.cr.usgs.gov//GEDI_L1_L2/GEDI/GEDI01_B.002/2019.06.13/GEDI01_B_2019164113239_O02836_01_T04925_02_005_01_V002.h5
+https://e4ftl01.cr.usgs.gov//GEDI_L1_L2/GEDI/GEDI01_B.002/2019.06.02/GEDI01_B_2019153154705_O02668_01_T02538_02_005_01_V002.h5
+https://e4ftl01.cr.usgs.gov//GEDI_L1_L2/GEDI/GEDI01_B.002/2019.05.31/GEDI01_B_2019151050144_O02630_04_T00725_02_005_01_V002.h5
+https://e4ftl01.cr.usgs.gov//GEDI_L1_L2/GEDI/GEDI01_B.002/2019.05.22/GEDI01_B_2019142200228_O02500_01_T05690_02_005_01_V002.h5
+https://e4ftl01.cr.usgs.gov//GEDI_L1_L2/GEDI/GEDI01_B.002/2019.05.13/GEDI01_B_2019133120341_O02355_04_T04994_02_005_01_V002.h5
+https://e4ftl01.cr.usgs.gov//GEDI_L1_L2/GEDI/GEDI01_B.002/2019.04.29/GEDI01_B_2019119172916_O02141_04_T02607_02_005_01_V002.h5
+https://e4ftl01.cr.usgs.gov//GEDI_L1_L2/GEDI/GEDI01_B.002/2019.04.22/GEDI01_B_2019112201147_O02034_04_T01337_02_005_01_V002.h5
+https://e4ftl01.cr.usgs.gov//GEDI_L1_L2/GEDI/GEDI01_B.002/2019.04.21/GEDI01_B_2019111083958_O02011_01_T04619_02_005_01_V002.h5
+EDSCEOF
