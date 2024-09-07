@@ -233,7 +233,7 @@ sd(L2A_spdf_unique$distance)
 
 
 out_spdf<-Collo[Collo$X..1.wave. %in% L2A_spdf_unique$X..1.wave., ]
-writeOGR(out_spdf, dsn="/media/aly/Bridger/Thesis/Spatial/LiDAR/", layer = "test", driver = "ESRI Shapefile", overwrite_layer = TRUE)
+#writeOGR(out_spdf, dsn="/media/aly/Bridger/Thesis/Spatial/LiDAR/", layer = "test", driver = "ESRI Shapefile", overwrite_layer = TRUE)
 
 hist(L2A_spdf_unique$distance)
 mean(L2A_spdf_unique$distance)
@@ -417,7 +417,7 @@ L2A_compare1<-as.data.frame(L2A_compare1)
 # Calculate error For Geolocation vs No Geolocation ####
 library(Metrics)
 
-error_summary_noGeo<-as.data.frame(rep(c(1:100),2))
+error_summary_noGeo<-as.data.frame(rep(c(0:100),2))
 colnames(error_summary_noGeo)<-c("rh")
 error_summary_noGeo$RMSE<-0
 error_summary_noGeo$rsq<-0
@@ -426,9 +426,9 @@ error_summary_noGeo$Bias<-0
 error_summary_noGeo$MAE<-0
 error_summary_noGeo$MAEpct<-0
 
-gedi<-13 
-sim<-145
-for (i in 1:100) {
+gedi<-12 
+sim<-144
+for (i in 1:101) {
   error_summary_noGeo[i,2]<-sqrt(mean((L2A_noGeo[,c((sim+i))] - L2A_noGeo[,c((gedi+i))])^2))
   rss <- sum((L2A_noGeo[,c((gedi+i))]- L2A_noGeo[,c((sim+i))])^ 2)  ## residual sum of squares
   tss <- sum((L2A_noGeo[,c((sim+i))] - mean(L2A_noGeo[,c((sim+i))])) ^ 2)  ## total sum of squares
@@ -438,21 +438,21 @@ for (i in 1:100) {
   error_summary_noGeo[i,6]<-(sum(abs(L2A_noGeo[,c((sim+i))] - L2A_noGeo[,c((gedi+i))])))/nrow(L2A_noGeo)
   error_summary_noGeo[i,7] <- ((error_summary_noGeo[i,6]/mean(L2A_noGeo[,c((sim+i))]))*100)
 }
-gedi<-496 
-sim<-15
-for (i in 1:100) {
-  error_summary_noGeo[((100+i)),2]<-sqrt(mean((L2A_compare1[,c((sim+i))] - L2A_compare1[,c((gedi+i))])^2))
+gedi<-495 
+sim<-14
+for (i in 1:101) {
+  error_summary_noGeo[((101+i)),2]<-sqrt(mean((L2A_compare1[,c((sim+i))] - L2A_compare1[,c((gedi+i))])^2))
   rss <- sum((L2A_compare1[,c((gedi+i))]- L2A_compare1[,c((sim+i))])^ 2)  ## residual sum of squares
   tss <- sum((L2A_compare1[,c((sim+i))] - mean(L2A_compare1[,c((sim+i))])) ^ 2)  ## total sum of squares
-  error_summary_noGeo[((100+i)),3] <- 1 - rss/tss
-  error_summary_noGeo[((100+i)),4] <- ((error_summary_noGeo[((100+i)),2]/mean(L2A_compare1[,c((sim+i))]))*100)
-  error_summary_noGeo[((100+i)),5]<-(sum(L2A_compare1[,c((gedi+i))]-L2A_compare1[,c((sim+i))])/nrow(L2A_compare1))
-  error_summary_noGeo[((100+i)),6]<-(sum(abs(L2A_compare1[,c((sim+i))] - L2A_compare1[,c((gedi+i))])))/nrow(L2A_compare1)
-  error_summary_noGeo[((100+i)),7] <- ((error_summary_noGeo[((100+i)),6]/mean(L2A_compare1[,c((sim+i))]))*100)
+  error_summary_noGeo[((101+i)),3] <- 1 - rss/tss
+  error_summary_noGeo[((101+i)),4] <- ((error_summary_noGeo[((101+i)),2]/mean(L2A_compare1[,c((sim+i))]))*100)
+  error_summary_noGeo[((101+i)),5]<-(sum((L2A_compare1[,c((gedi+i))]-L2A_compare1[,c((sim+i))]))/nrow(L2A_compare1))
+  error_summary_noGeo[((101+i)),6]<-(sum(abs(L2A_compare1[,c((sim+i))] - L2A_compare1[,c((gedi+i))])))/nrow(L2A_compare1)
+  error_summary_noGeo[((101+i)),7] <- ((error_summary_noGeo[((101+i)),6]/mean(L2A_compare1[,c((sim+i))]))*100)
 }
 
-error_summary_noGeo$Data<-rep(c("No Geolocation Correction","Geolocation Corrected"), each=100)
-error_summary_noGeo$Data_short<-rep(c("No Geolocation Correction","Geolocation Corrected"), each=100)
+error_summary_noGeo$Data<-rep(c("No Geolocation Correction","Geolocation Corrected"), each=101)
+error_summary_noGeo$Data_short<-rep(c("No Geolocation Correction","Geolocation Corrected"), each=101)
 error_summary_noGeo$Data_short<-as.factor(error_summary_noGeo$Data_short)
 levels(error_summary_noGeo$Data_short)
 error_summary_noGeo$Data_short<-ordered(error_summary_noGeo$Data_short, levels=c("No Geolocation Correction","Geolocation Corrected"))
@@ -460,7 +460,7 @@ error_summary_noGeo$Data_short<-ordered(error_summary_noGeo$Data_short, levels=c
 library(RColorBrewer)
 RMSE_plot<-ggplot(error_summary_noGeo, aes(x=rh, y=RMSE, col=Data_short, alpha=0.25)) + 
   scale_x_continuous(limits = c(0,105), expand = c(0,0), breaks = seq(0,100,25)) +
-  scale_y_continuous (limits = c(0,8.1), expand = c(0,0), breaks = seq(0,8,2)) +
+  scale_y_continuous (limits = c(0,8.6), expand = c(0,0), breaks = seq(0,8.5,2)) +
   geom_point(aes(col=Data_short), size=2) +geom_line(aes(col=Data_short), size=2) + theme_pubr() + scale_colour_brewer(palette = "Paired") + 
   theme(
     legend.position = c(.9, .4),
@@ -490,7 +490,7 @@ RMSEpct_plot
 
 Bias_plot<-ggplot(subset(error_summary_noGeo, Data_short!="Slopes < 30"), aes(x=rh, y=Bias, col=Data_short, alpha=0.25)) + 
   scale_x_continuous(limits = c(0,105), expand = c(0,0), breaks = seq(0,100,25)) +
-  scale_y_continuous (limits = c(-3,0.1), expand = c(0,0), breaks = seq(-3,0,1)) +
+  scale_y_continuous (limits = c(-6.5,0.1), expand = c(0,0), breaks = seq(-6,0,1)) +
   geom_point(aes(col=Data_short), size=2) +geom_line(aes(col=Data_short), size=2) + theme_pubr() + scale_colour_brewer(palette = "Paired") + 
   theme(
     legend.position = "none",
@@ -548,7 +548,7 @@ dev.off()
 
 
 # Calculate error For algorithm selection ####
-error_summary_RealvGauss<-as.data.frame(rep(c(1:100),4))
+error_summary_RealvGauss<-as.data.frame(rep(c(0:100),4))
 colnames(error_summary_RealvGauss)<-c("rh")
 error_summary_RealvGauss$RMSE<-0
 error_summary_RealvGauss$rsq<-0
@@ -557,8 +557,8 @@ error_summary_RealvGauss$Bias<-0
 error_summary_RealvGauss$MAE<-0
 error_summary_RealvGauss$MAEpct<-0
 
-gedi<-496 
-sim<-15
+gedi<-495 
+sim<-14
 for (i in 1:100) {
   error_summary_RealvGauss[i,2]<-sqrt(mean((L2A_compare1[,c((sim+i))] - L2A_compare1[,c((gedi+i))])^2))
   rss <- sum((L2A_compare1[,c((gedi+i))]- L2A_compare1[,c((sim+i))])^ 2)  ## residual sum of squares
@@ -570,48 +570,48 @@ for (i in 1:100) {
   error_summary_RealvGauss[i,7] <- ((error_summary_RealvGauss[((100+i)),6]/mean(L2A_compare1[,c((sim+i))]))*100)
 }
 
-gedi<-496 
-sim<-116 #max
-for (i in 1:100) {
-  error_summary_RealvGauss[((100+i)),2]<-sqrt(mean((L2A_compare1[,c((sim+i))] - L2A_compare1[,c((gedi+i))])^2))
+gedi<-495 
+sim<-115 #max
+for (i in 1:101) {
+  error_summary_RealvGauss[((101+i)),2]<-sqrt(mean((L2A_compare1[,c((sim+i))] - L2A_compare1[,c((gedi+i))])^2))
   rss <- sum((L2A_compare1[,c((gedi+i))]- L2A_compare1[,c((sim+i))])^ 2)  ## residual sum of squares
   tss <- sum((L2A_compare1[,c((sim+i))] - mean(L2A_compare1[,c((sim+i))])) ^ 2)  ## total sum of squares
-  error_summary_RealvGauss[((100+i)),3] <- 1 - rss/tss
-  error_summary_RealvGauss[((100+i)),4] <- ((error_summary_RealvGauss[((100+i)),2]/mean(L2A_compare1[,c((sim+i))]))*100)
-  error_summary_RealvGauss[((100+i)),5]<-(sum(L2A_compare1[,c((gedi+i))]-L2A_compare1[,c((sim+i))])/nrow(L2A_compare1))
-  error_summary_RealvGauss[((100+i)),6]<-(sum(abs(L2A_compare1[,c((sim+i))] - L2A_compare1[,c((gedi+i))])))/nrow(L2A_compare1)
-  error_summary_RealvGauss[((100+i)),7] <- ((error_summary_RealvGauss[((100+i)),6]/mean(L2A_compare1[,c((sim+i))]))*100)
+  error_summary_RealvGauss[((101+i)),3] <- 1 - rss/tss
+  error_summary_RealvGauss[((101+i)),4] <- ((error_summary_RealvGauss[((101+i)),2]/mean(L2A_compare1[,c((sim+i))]))*100)
+  error_summary_RealvGauss[((101+i)),5]<-(sum(L2A_compare1[,c((gedi+i))]-L2A_compare1[,c((sim+i))])/nrow(L2A_compare1))
+  error_summary_RealvGauss[((101+i)),6]<-(sum(abs(L2A_compare1[,c((sim+i))] - L2A_compare1[,c((gedi+i))])))/nrow(L2A_compare1)
+  error_summary_RealvGauss[((101+i)),7] <- ((error_summary_RealvGauss[((101+i)),6]/mean(L2A_compare1[,c((sim+i))]))*100)
 }
 
-gedi<-496 
-sim<-217 #inf
-for (i in 1:100) {
-  error_summary_RealvGauss[((200+i)),2]<-sqrt(mean((L2A_compare1[,c((sim+i))] - L2A_compare1[,c((gedi+i))])^2))
+gedi<-495 
+sim<-216 #inf
+for (i in 1:101) {
+  error_summary_RealvGauss[((202+i)),2]<-sqrt(mean((L2A_compare1[,c((sim+i))] - L2A_compare1[,c((gedi+i))])^2))
   rss <- sum((L2A_compare1[,c((gedi+i))]- L2A_compare1[,c((sim+i))])^ 2)  ## residual sum of squares
   tss <- sum((L2A_compare1[,c((sim+i))] - mean(L2A_compare1[,c((sim+i))])) ^ 2)  ## total sum of squares
-  error_summary_RealvGauss[((200+i)),3] <- 1 - rss/tss
-  error_summary_RealvGauss[((200+i)),4] <- ((error_summary_RealvGauss[((100+i)),2]/mean(L2A_compare1[,c((sim+i))]))*100)
-  error_summary_RealvGauss[((200+i)),5]<-(sum(L2A_compare1[,c((gedi+i))]-L2A_compare1[,c((sim+i))])/nrow(L2A_compare1))
-  error_summary_RealvGauss[((200+i)),6]<-(sum(abs(L2A_compare1[,c((sim+i))] - L2A_compare1[,c((gedi+i))])))/nrow(L2A_compare1)
-  error_summary_RealvGauss[((200+i)),7] <- ((error_summary_RealvGauss[((100+i)),6]/mean(L2A_compare1[,c((sim+i))]))*100)
+  error_summary_RealvGauss[((202+i)),3] <- 1 - rss/tss
+  error_summary_RealvGauss[((202+i)),4] <- ((error_summary_RealvGauss[((202+i)),2]/mean(L2A_compare1[,c((sim+i))]))*100)
+  error_summary_RealvGauss[((202+i)),5]<-(sum(L2A_compare1[,c((gedi+i))]-L2A_compare1[,c((sim+i))])/nrow(L2A_compare1))
+  error_summary_RealvGauss[((202+i)),6]<-(sum(abs(L2A_compare1[,c((sim+i))] - L2A_compare1[,c((gedi+i))])))/nrow(L2A_compare1)
+  error_summary_RealvGauss[((202+i)),7] <- ((error_summary_RealvGauss[((202+i)),6]/mean(L2A_compare1[,c((sim+i))]))*100)
 }
 
-gedi<-496 
-sim<-318 #real
-for (i in 1:100) {
-  error_summary_RealvGauss[((300+i)),2]<-sqrt(mean((L2A_compare1[,c((sim+i))] - L2A_compare1[,c((gedi+i))])^2))
+gedi<-495 
+sim<-317 #real
+for (i in 1:101) {
+  error_summary_RealvGauss[((303+i)),2]<-sqrt(mean((L2A_compare1[,c((sim+i))] - L2A_compare1[,c((gedi+i))])^2))
   rss <- sum((L2A_compare1[,c((gedi+i))]- L2A_compare1[,c((sim+i))])^ 2)  ## residual sum of squares
   tss <- sum((L2A_compare1[,c((sim+i))] - mean(L2A_compare1[,c((sim+i))])) ^ 2)  ## total sum of squares
-  error_summary_RealvGauss[((300+i)),3] <- 1 - rss/tss
-  error_summary_RealvGauss[((300+i)),4] <- ((error_summary_RealvGauss[((100+i)),2]/mean(L2A_compare1[,c((sim+i))]))*100)
-  error_summary_RealvGauss[((300+i)),5]<-(sum(L2A_compare1[,c((gedi+i))]-L2A_compare1[,c((sim+i))])/nrow(L2A_compare1))
-  error_summary_RealvGauss[((300+i)),6]<-(sum(abs(L2A_compare1[,c((sim+i))] - L2A_compare1[,c((gedi+i))])))/nrow(L2A_compare1)
-  error_summary_RealvGauss[((300+i)),7] <- ((error_summary_RealvGauss[((100+i)),6]/mean(L2A_compare1[,c((sim+i))]))*100)
+  error_summary_RealvGauss[((303+i)),3] <- 1 - rss/tss
+  error_summary_RealvGauss[((303+i)),4] <- ((error_summary_RealvGauss[((303+i)),2]/mean(L2A_compare1[,c((sim+i))]))*100)
+  error_summary_RealvGauss[((303+i)),5]<-(sum(L2A_compare1[,c((gedi+i))]-L2A_compare1[,c((sim+i))])/nrow(L2A_compare1))
+  error_summary_RealvGauss[((303+i)),6]<-(sum(abs(L2A_compare1[,c((sim+i))] - L2A_compare1[,c((gedi+i))])))/nrow(L2A_compare1)
+  error_summary_RealvGauss[((303+i)),7] <- ((error_summary_RealvGauss[((303+i)),6]/mean(L2A_compare1[,c((sim+i))]))*100)
 }
 
 
-error_summary_RealvGauss$Data<-rep(c("Gaussian","Max","Inf","RhReal"), each=100)
-error_summary_RealvGauss$Data_short<-rep(c("Gaussian","Max","Inf","RhReal"), each=100)
+error_summary_RealvGauss$Data<-rep(c("Gaussian","Max","Inf","RhReal"), each=101)
+error_summary_RealvGauss$Data_short<-rep(c("Gaussian","Max","Inf","RhReal"), each=101)
 error_summary_RealvGauss$Data_short<-as.factor(error_summary_RealvGauss$Data_short)
 levels(error_summary_RealvGauss$Data_short)
 error_summary_RealvGauss$Data_short<-ordered(error_summary_RealvGauss$Data_short, levels=c("Gaussian","RhReal","Max","Inf"))
@@ -708,7 +708,7 @@ RMSE<-sqrt(mean((L2A_compare1[,c(499)] - L2A_compare1[,c(15)])^2))
 rss <- sum((L2A_compare1[,c((499))]- L2A_compare1[,c((115))])^ 2)  ## residual sum of squares
 tss <- sum((L2A_compare1[,c((115))] - mean(L2A_compare1[,c((115))])) ^ 2)  ## total sum of squares
 1 - rss/tss
-error_summary2<-as.data.frame(rep(c(1:100),9))
+error_summary2<-as.data.frame(rep(c(0:100),9))
 colnames(error_summary2)<-c("rh")
 error_summary2$RMSE<-0
 error_summary2$rsq<-0
@@ -717,9 +717,9 @@ error_summary2$Bias<-0
 error_summary2$MAE<-0
 error_summary2$MAEpct<-0
 
-gedi<-496 
-sim<-15
-for (i in 1:100) {
+gedi<-495 
+sim<-14
+for (i in 1:101) {
   error_summary2[i,2]<-sqrt(mean((L2A_compareWflags[,c((sim+i))] - L2A_compareWflags[,c((gedi+i))])^2))
   rss <- sum((L2A_compareWflags[,c((gedi+i))]- L2A_compareWflags[,c((sim+i))])^ 2)  ## residual sum of squares
   tss <- sum((L2A_compareWflags[,c((sim+i))] - mean(L2A_compareWflags[,c((sim+i))])) ^ 2)  ## total sum of squares
@@ -729,29 +729,27 @@ for (i in 1:100) {
   error_summary2[i,6]<-(sum(abs(L2A_compareWflags[,c((sim+i))] - L2A_compareWflags[,c((gedi+i))])))/nrow(L2A_compareWflags)
   error_summary2[i,7] <- ((error_summary2[i,6]/mean(L2A_compareWflags[,c((sim+i))]))*100)
 }
-gedi<-496 
-sim<-15
-for (i in 1:100) {
-  error_summary2[((100+i)),2]<-sqrt(mean((L2A_compare1[,c((sim+i))] - L2A_compare1[,c((gedi+i))])^2))
+for (i in 1:101) {
+  error_summary2[((101+i)),2]<-sqrt(mean((L2A_compare1[,c((sim+i))] - L2A_compare1[,c((gedi+i))])^2))
   rss <- sum((L2A_compare1[,c((gedi+i))]- L2A_compare1[,c((sim+i))])^ 2)  ## residual sum of squares
   tss <- sum((L2A_compare1[,c((sim+i))] - mean(L2A_compare1[,c((sim+i))])) ^ 2)  ## total sum of squares
-  error_summary2[((100+i)),3] <- 1 - rss/tss
-  error_summary2[((100+i)),4] <- ((error_summary2[((100+i)),2]/mean(L2A_compare1[,c((sim+i))]))*100)
-  error_summary2[((100+i)),5]<-(sum(L2A_compare1[,c((gedi+i))]-L2A_compare1[,c((sim+i))])/nrow(L2A_compare1))
-  error_summary2[((100+i)),6]<-(sum(abs(L2A_compare1[,c((sim+i))] - L2A_compare1[,c((gedi+i))])))/nrow(L2A_compare1)
-  error_summary2[((100+i)),7] <- ((error_summary2[((100+i)),6]/mean(L2A_compare1[,c((sim+i))]))*100)
+  error_summary2[((101+i)),3] <- 1 - rss/tss
+  error_summary2[((101+i)),4] <- ((error_summary2[((101+i)),2]/mean(L2A_compare1[,c((sim+i))]))*100)
+  error_summary2[((101+i)),5]<-(sum(L2A_compare1[,c((gedi+i))]-L2A_compare1[,c((sim+i))])/nrow(L2A_compare1))
+  error_summary2[((101+i)),6]<-(sum(abs(L2A_compare1[,c((sim+i))] - L2A_compare1[,c((gedi+i))])))/nrow(L2A_compare1)
+  error_summary2[((101+i)),7] <- ((error_summary2[((101+i)),6]/mean(L2A_compare1[,c((sim+i))]))*100)
 }
 
 error_summary2$Data<-rep(c("All Data","Flagged Data Removed*","Truncated", "Exclude Daytime Samples",
                            "Exclude Daytime & Coverage Beam Samples", "Sensitivity > 0.95", 
                            "Exclude Coverage Beams For Canopy Cover > 95%",
                            "Slopes >30 Degrees",
-                           "Sensitivity < Canopy Cover"), each=100)
+                           "Sensitivity < Canopy Cover"), each=101)
 error_summary2$Data_short<-rep(c("All Data","Flags Removed*","Truncated", "Night",
                                  "Night w/ Power Beams", "Sensitivity > 0.95", 
                                  "No Coverage w/ Cover > 0.95",
                                  "Slopes < 30",
-                                 "Sensitivity < Canopy Cover"), each=100)
+                                 "Sensitivity < Canopy Cover"), each=101)
 error_summary2$Data_short<-as.factor(error_summary2$Data_short)
 levels(error_summary2$Data_short)
 error_summary2$Data_short<-ordered(error_summary2$Data_short, levels=c("All Data","Flags Removed*","Truncated", "Night",
@@ -759,35 +757,34 @@ error_summary2$Data_short<-ordered(error_summary2$Data_short, levels=c("All Data
                                                                        "No Coverage w/ Cover > 0.95",
                                                                        "Slopes < 30",
                                                                        "Sensitivity < Canopy Cover"))
-gedi<-496 
-sim<-15
+
 L2A_compare_trunk<-L2A_compare1
 L2A_compare_trunk[,c(496:596)][L2A_compare_trunk[,c(496:596)] < 0] <-0
 L2A_compare_trunk[,c(15:115)][L2A_compare_trunk[,c(15:115)] < 0] <-0
 
-for (i in 1:100) {
-  error_summary2[(200+i),2]<-sqrt(mean((L2A_compare_trunk[,c((sim+i))] - L2A_compare_trunk[,c((gedi+i))])^2))
+for (i in 1:101) {
+  error_summary2[(202+i),2]<-sqrt(mean((L2A_compare_trunk[,c((sim+i))] - L2A_compare_trunk[,c((gedi+i))])^2))
   rss <- sum((L2A_compare_trunk[,c((gedi+i))]- L2A_compare_trunk[,c((sim+i))])^ 2)  ## residual sum of squares
   tss <- sum((L2A_compare_trunk[,c((sim+i))] - mean(L2A_compare_trunk[,c((sim+i))])) ^ 2)  ## total sum of squares
-  error_summary2[(200+i),3] <- 1 - rss/tss
-  error_summary2[((200+i)),4] <- ((error_summary2[((200+i)),2]/mean(L2A_compare_trunk[,c((sim+i))]))*100)
-  error_summary2[((200+i)),5]<-(sum(L2A_compare_trunk[,c((gedi+i))]-L2A_compare_trunk[,c((sim+i))])/nrow(L2A_compare_trunk))
-  error_summary2[((200+i)),6]<-(sum(abs(L2A_compare_trunk[,c((sim+i))] - L2A_compare_trunk[,c((gedi+i))])))/nrow(L2A_compare_trunk)
-  error_summary2[((200+i)),7] <- ((error_summary2[((200+i)),6]/mean(L2A_compare_trunk[,c((sim+i))]))*100)
+  error_summary2[(202+i),3] <- 1 - rss/tss
+  error_summary2[((202+i)),4] <- ((error_summary2[((202+i)),2]/mean(L2A_compare_trunk[,c((sim+i))]))*100)
+  error_summary2[((202+i)),5]<-(sum(L2A_compare_trunk[,c((gedi+i))]-L2A_compare_trunk[,c((sim+i))])/nrow(L2A_compare_trunk))
+  error_summary2[((202+i)),6]<-(sum(abs(L2A_compare_trunk[,c((sim+i))] - L2A_compare_trunk[,c((gedi+i))])))/nrow(L2A_compare_trunk)
+  error_summary2[((202+i)),7] <- ((error_summary2[((202+i)),6]/mean(L2A_compare_trunk[,c((sim+i))]))*100)
 }
 
 list<-c("flag","No Flags","night","Liu","snstv95","HighCC","Slope30","cc_snstv")
 for (j in 3:length(list)) {
-  for (i in 1:100) {
+  for (i in 1:101) {
     temp_data<-subset(L2A_compare1, L2A_compare1[,c(list[j])]==1)
-    error_summary2[((j*100)+i),2]<-sqrt(mean((temp_data[,c((sim+i))] - temp_data[,c((gedi+i))])^2))
+    error_summary2[((j*101)+i),2]<-sqrt(mean((temp_data[,c((sim+i))] - temp_data[,c((gedi+i))])^2))
     rss <- sum((temp_data[,c((gedi+i))]- temp_data[,c((sim+i))])^ 2)  ## residual sum of squares
     tss <- sum((temp_data[,c((sim+i))] - mean(temp_data[,c((sim+i))])) ^ 2)  ## total sum of squares
-    error_summary2[((j*100)+i),3] <- 1 - rss/tss
-    error_summary2[((j*100)+i),4] <- ((error_summary2[((j*100)+i),2]/mean(temp_data[,c((sim+i))]))*100)
-    error_summary2[((j*100)+i),5]<-(sum(temp_data[,c((gedi+i))]-temp_data[,c((sim+i))])/nrow(temp_data))
-    error_summary2[((j*100)+i),6]<-(sum(abs(temp_data[,c((sim+i))] - temp_data[,c((gedi+i))])))/nrow(temp_data)
-    error_summary2[((j*100)+i),7] <- ((error_summary2[((j*100)+i),6]/mean(temp_data[,c((sim+i))]))*100)
+    error_summary2[((j*101)+i),3] <- 1 - rss/tss
+    error_summary2[((j*101)+i),4] <- ((error_summary2[((j*101)+i),2]/mean(temp_data[,c((sim+i))]))*100)
+    error_summary2[((j*101)+i),5]<-(sum(temp_data[,c((gedi+i))]-temp_data[,c((sim+i))])/nrow(temp_data))
+    error_summary2[((j*101)+i),6]<-(sum(abs(temp_data[,c((sim+i))] - temp_data[,c((gedi+i))])))/nrow(temp_data)
+    error_summary2[((j*101)+i),7] <- ((error_summary2[((j*101)+i),6]/mean(temp_data[,c((sim+i))]))*100)
   }
 }
 
@@ -795,7 +792,7 @@ for (j in 3:length(list)) {
 library(RColorBrewer)
 RMSE_plot<-ggplot(subset(error_summary2, Data_short!="Slopes < 30"), aes(x=rh, y=RMSE, col=Data_short, alpha=0.25)) + 
   scale_x_continuous(limits = c(0,105), expand = c(0,0), breaks = seq(0,100,25)) +
-  scale_y_continuous (limits = c(0,8.1), expand = c(0,0), breaks = seq(0,8,2)) +
+  scale_y_continuous (limits = c(0,10.3), expand = c(0,0), breaks = seq(0,10,2)) +
   geom_point(aes(col=Data_short), size=2) +geom_line(aes(col=Data_short), size=2) + theme_pubr() + scale_colour_brewer(palette = "Paired") + 
   theme(
     legend.position = "none",
@@ -810,7 +807,7 @@ RMSE_plot
 
 RMSEpct_plot<-ggplot(subset(error_summary2, Data_short!="Slopes < 30"), aes(x=rh, y=RMSEpct, col=Data_short, alpha=0.25)) + 
   scale_x_continuous(limits = c(0,105), expand = c(0,0), breaks = seq(0,100,25)) +
-  scale_y_continuous (limits = c(18,103), expand = c(0,0), breaks = seq(20,100,20)) +
+  scale_y_continuous (limits = c(16.5,103), expand = c(0,0), breaks = seq(20,100,20)) +
   geom_point(aes(col=Data_short), size=2) +geom_line(aes(col=Data_short), size=2) + theme_pubr() + scale_colour_brewer(palette = "Paired") + 
   theme(
     legend.position = "none",
@@ -871,7 +868,7 @@ MAEpct_plot<-ggplot(subset(error_summary2, Data_short!="Slopes < 30"), aes(x=rh,
   ylab("MAE %") + xlab("Relative Height (RH)") + aes(group=rev(Data_short))
 MAEpct_plot
 
-#(file="/media/aly/Bridger/Thesis/Figures/Final/SRS/Figure7.tiff", units="in", width=12, height=10, res=300)
+#tiff(file="/media/aly/Bridger/Thesis/Figures/Final/SRS/Figure7.tiff", units="in", width=12, height=10, res=300)
 #png(file="/media/aly/Bridger/Thesis/Figures/Final/SRS/Figure7.png", units="in", width=12, height=10, res=300)
 ggpubr::ggarrange(Bias_plot, RMSE_plot, MAE_plot,
                   Rsq_plot, RMSEpct_plot, MAEpct_plot,
@@ -1006,6 +1003,7 @@ median(error_summary2[801:900,5] - error_summary2[101:200,5])
 library(reshape)
 gedi<-13 
 sim<-145
+#error_summary_noGeo[((100+i)),5]<-(sum((L2A_compare1[,c((gedi+i))]-L2A_compare1[,c((sim+i))]))/nrow(L2A_compare1))
 L2A_error_gauss_nogeo<-(L2A_noGeo[,13:113]-L2A_noGeo[,145:245])
 L2A_error_melt<-melt(L2A_error_gauss_nogeo)
 L2A_error_melt$rh<-rep(0:100, each=nrow(L2A_error_gauss_nogeo))
@@ -1038,6 +1036,25 @@ ggplot(bins, aes(x=rh_bin, y=value)) + geom_boxplot(outlier.shape = 1) + theme_p
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5))+
   theme(text = element_text(size=20))
 dev.off()
+
+ggplot(bins, aes(x=rh, y=value)) + geom_boxplot(outlier.shape = 1) + theme_pubr() + 
+  stat_summary(fun.y=mean, geom="point", shape=20, size=2, col="red") +
+  geom_hline(yintercept=0, linetype="solid", color = "black", size=0.5) + ylab("Error (GEDI - GEDIsim) (m)") +
+  scale_y_continuous (limits = c(-32,32), expand = c(0,0), breaks = seq(-30,30,5)) +
+  # scale_x_discrete(name="Relative Height Bins", labels=c("0-5","6-10",
+  #                                                        "11-15","16-20",
+  #                                                        "21-25","26-30",
+  #                                                        "31-35","36-40",
+  #                                                        "41-45","46-50",
+  #                                                        "51-55","56-60",
+  #                                                        "61-65","66-70",
+  #                                                        "71-75","76-80",
+  #                                                        "81-85","86-90",
+  #                                                        "91-95","96-99",
+  #                                                        "100")) + 
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5))+
+  theme(text = element_text(size=20))
+
 
 d0<-get_density(L2A_compare1$rh_0, L2A_compare1$rhGauss.0, n=50)
 P0<-ggplot(L2A_compare1) + geom_point(aes(x=rh_0, y=rhGauss.0, color=d0)) + 

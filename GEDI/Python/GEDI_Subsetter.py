@@ -172,7 +172,8 @@ for g in gediFiles:
         
         # Clip to only include points within the user-defined bounding box
         geoDF = geoDF[geoDF['geometry'].within(ROI.envelope)]    
-        gediDF = gediDF.append(geoDF)
+        gediDF = pd.concat([gediDF, geoDF])
+        #gediDF = gediDF.append(geoDF)
         del geoDF
     
     # Convert to geodataframe and add crs
@@ -259,7 +260,8 @@ for g in gediFiles:
                 print(f"SDS: {s} not found")
             print(f"Processing {j} of {len(beamSDS) * len(beams)}: {s}")
         
-        beamsDF = beamsDF.append(beamDF)
+        #beamsDF = beamsDF.append(beamDF)
+        beamsDF = pd.concat([beamsDF, beamDF])
     del beamDF, beamSDS, beams, gedi, gediSDS, shots, sdsSubset
     
     # Combine geolocation dataframe with SDS layer dataframe

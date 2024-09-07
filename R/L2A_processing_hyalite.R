@@ -3,7 +3,7 @@ library(geojsonR)
 library(jsonlite)
 library(reshape)
 library(sp)
-library(rgdal)
+library(rgdal) 
 
 #Reading in data####
 #set the working directory from which the files will be read from
